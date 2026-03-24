@@ -1,40 +1,39 @@
-import html
-import re
+mport re
 from typing import List, Dict
 
 import streamlit as st
 from openai import OpenAI
-from qdrant_client import QdrantClient
+from qdt_client import QdrantClient
 
-# =========================
+# -----------------------------
 # Secrets / Clients
-# =========================
+# -----------------------------
 OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 OPENAI_MODEL = st.secrets.get("OPENAI_MODEL", "gpt-4.1-mini")
 OPENAI_EMBED_MODEL = st.secrets.get("OPENAI_EMBED_MODEL", "text-embedding-3-small")
 
-QDRANT_URL = st.secrets["QDRANT_URL"]
+QDRANT_URL st.secrets["QDRANT_URL"]
 QDRANT_API_KEY = st.secrets["QDRANT_API_KEY"]
-QDRANT_COLLECTION = st.secrets.get("QDRANT_COLLECTION", "nrel_docs")
+ = st.secrets.get("QDRANT_COLLECTION", "nrel_docs")
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 qdrant_client = QdrantClient(
     url=QDRANT_URL,
     api_key=QDRANT_API_KEY,
-)
+)l
 
-# =========================
+# -----------------------------
 # Page config
-# =========================
+# -----------------------------
 st.set_page_config(
     page_title="AI Knowledge Agent",
     page_icon="⚡",
     layout="wide",
 )
 
-# =========================
+# -----------------------------
 # Session state
-# =========================
+# -----------------------------
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "question_history" not in st.session_state:
@@ -44,234 +43,105 @@ if "selected_question" not in st.session_state:
 if "last_response" not in st.session_state:
     st.session_state.last_response = None
 
-# =========================
-# Premium CSS
-# =========================
+# -----------------------------
+# Styling
+# -----------------------------
 st.markdown(
     """
     <style>
-    html, body, .stApp {
-        background: #f8fafc !important;
-        color: #0f172a !important;
-    }
-
-    * {
-        color: inherit;
-    }
-
-    .block-container {
-        padding-top: 1.2rem;
-        padding-bottom: 2rem;
-        max-width: 1200px;
-    }
-
-    .hero-wrap {
-        background: linear-gradient(135deg, #0f172a 0%, #0f766e 45%, #2563eb 100%);
-        border-radius: 24px;
-        padding: 1.4rem 1.5rem 1.25rem 1.5rem;
-        color: white !important;
-        box-shadow: 0 12px 35px rgba(15, 23, 42, 0.16);
+    .hero {
+        padding: 1.2rem 1.4rem;
+        border-radius: 18px;
+        background: linear-gradient(135deg, #0f766e 0%, #1e3a8a 100%);
+        color: white;
         margin-bottom: 1rem;
-        border: 1px solid rgba(255,255,255,0.08);
     }
+    .hero h1 { margin: 0; font-size: 1.9rem; font-weight: 700; }
+    .hero p { margin: 0.4rem 0 0 0; font-size: 0.98rem; opacity: 0.96; }
 
-    .hero-title {
-        font-size: 2.1rem;
-        font-weight: 800;
-        line-height: 1.1;
-        margin: 0;
-        color: white !important;
-    }
-
-    .hero-subtitle {
-        margin-top: 0.55rem;
-        font-size: 1rem;
-        line-height: 1.5;
-        color: rgba(255,255,255,0.92) !important;
-    }
-
-    .hero-pill {
+    .pill { we
         display: inline-block;
-        margin-top: 0.85rem;
-        margin-right: 0.4rem;
-        padding: 0.34rem 0.7rem;
+        padding: 0.28rem 0.68rem;
         border-radius: 999px;
-        background: rgba(255,255,255,0.13);
-        color: white !important;
+        background: rgba(255,255,255,0.14);
+        margin-right: 0.4rem;
+        margin-top: 0.75rem;
         font-size: 0.82rem;
-        border: 1px solid rgba(255,255,255,0.12);
-        backdrop-filter: blur(6px);
     }
 
     .disclaimer {
         background: #fff7ed;
         border: 1px solid #fed7aa;
-        color: #9a3412 !important;
-        border-radius: 16px;
-        padding: 0.95rem 1rem;
-        margin: 1rem 0 1rem 0;
-        box-shadow: 0 6px 18px rgba(154, 52, 18, 0.06);
-        font-size: 0.94rem;
-    }
-
-    .section-label {
-        font-size: 0.75rem;
-        color: #64748b !important;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        font-weight: 700;
-        margin: 0.2rem 0 0.45rem 0;
-    }
-
-    .premium-card {
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 20px;
-        padding: 1rem 1rem;
-        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+        color: #9a3412;
+        border-radius: 12px;
+        padding: 0.85rem 1rem;
+        margin-bottom: 1rem;
+        font-size: 0.92rem;
     }
 
     .citation-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        padding: 0.9rem 0.95rem;
-        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 0.8rem 0.9rem;
         margin-bottom: 0.7rem;
-    }
-
-    .source-title {
-        font-weight: 700;
-        font-size: 0.98rem;
-        color: #0f172a !important;
-    }
-
-    .source-meta {
-        margin-top: 0.22rem;
-        color: #475569 !important;
-        font-size: 0.88rem;
-    }
-
-    .source-path {
-        margin-top: 0.35rem;
-        color: #94a3b8 !important;
-        font-size: 0.74rem;
-        word-break: break-word;
     }
 
     .recent-chip {
         display: inline-block;
-        padding: 0.38rem 0.72rem;
+        padding: 0.35rem 0.65rem;
         border-radius: 999px;
-        background: #e0f2fe;
-        color: #075985 !important;
-        margin: 0.18rem 0.24rem 0.18rem 0;
-        font-size: 0.83rem;
-        border: 1px solid #bae6fd;
+        background: #eef2ff;
+        color: #3730a3;
+        margin: 0.2rem 0.25rem 0.2rem 0;
+        font-size: 0.84rem;
     }
 
     .answer-heading {
         background-color: #dcfce7;
-        color: #166534 !important;
-        padding: 0.18rem 0.48rem;
-        border-radius: 0.45rem;
-        font-weight: 800;
+        color: #166534;
+        padding: 0.18rem 0.45rem;
+        border-radius: 0.4rem;
+        font-weight: 700;
     }
 
     .explanation-heading {
         background-color: #dbeafe;
-        color: #1d4ed8 !important;
-        padding: 0.18rem 0.48rem;
-        border-radius: 0.45rem;
-        font-weight: 800;
+        color: #1d4ed8;
+        padding: 0.18rem 0.45rem;
+        border-radius: 0.4rem;
+        font-weight: 700;
     }
 
     .recommendation-heading {
         background-color: #fef3c7;
-        color: #92400e !important;
-        padding: 0.18rem 0.48rem;
-        border-radius: 0.45rem;
-        font-weight: 800;
+        color: #92400e;
+        padding: 0.18rem 0.45rem;
+        border-radius: 0.4rem;
+        font-weight: 700;
     }
 
     .citation-heading {
         background-color: #ede9fe;
-        color: #6d28d9 !important;
-        padding: 0.18rem 0.48rem;
-        border-radius: 0.45rem;
-        font-weight: 800;
-    }
-
-    .metric-shell {
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 18px;
-        padding: 0.2rem 0.25rem;
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
-    }
-
-    .stChatMessage {
-        background: white !important;
-        border: 1px solid #e2e8f0;
-        border-radius: 20px !important;
-        padding: 0.6rem 0.8rem !important;
-        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
-        margin-bottom: 0.8rem;
-    }
-
-    .stChatMessage [data-testid="stMarkdownContainer"] p {
-        color: #0f172a !important;
-    }
-
-    .stTextInput > div > div > input,
-    .stTextArea textarea {
-        background: white !important;
-        color: #0f172a !important;
-        border-radius: 14px !important;
-        border: 1px solid #cbd5e1 !important;
-    }
-
-    .stButton > button {
-        border-radius: 14px !important;
-        border: 1px solid #cbd5e1 !important;
-        background: white !important;
-        color: #0f172a !important;
-        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
-        font-weight: 600;
-    }
-
-    .stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #0f766e, #2563eb) !important;
-        color: white !important;
-        border: none !important;
+        color: #6d28d9;
+        padding: 0.18rem 0.45rem;
+        border-radius: 0.4rem;
+        font-weight: 700;
     }
 
     mark {
-        background: #fde68a !important;
-        color: #111827 !important;
-        padding: 0.08rem 0.2rem;
-        border-radius: 0.28rem;
-    }
-
-    [data-testid="stSidebar"] {
-        background: #ffffff !important;
-        border-right: 1px solid #e2e8f0;
-    }
-
-    @media (prefers-color-scheme: dark) {
-        html, body, .stApp {
-            background: #f8fafc !important;
-            color: #0f172a !important;
-        }
+        background-color: #fde68a;
+        padding: 0.08rem 0.22rem;
+        border-radius: 0.3rem;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# =========================
-# Helpers
-# =========================
+# -----------------------------
+# UI helper rendering
+# -----------------------------
 def render_answer_with_highlights(answer: str) -> str:
     safe = html.escape(answer)
     safe = re.sub(r"(?m)^Answer:", '<span class="answer-heading">Answer</span>', safe)
@@ -279,13 +149,16 @@ def render_answer_with_highlights(answer: str) -> str:
     safe = re.sub(r"(?m)^Recommendations:", '<span class="recommendation-heading">Recommendations</span>', safe)
     safe = re.sub(r"(?m)^Citations:", '<span class="citation-heading">Citations</span>', safe)
     safe = safe.replace("\n", "<br>")
-    return f'<div style="line-height:1.9; font-size:1rem; color:#0f172a;">{safe}</div>'
+    return f'<div style="line-height:1.85; font-size:1rem; color:#0f172a;">{safe}</div>'
 
 
 def render_html_block(text: str) -> str:
-    return f'<div style="line-height:1.78; font-size:0.98rem; color:#0f172a;">{text}</div>'
+    return f'<div style="line-height:1.75; font-size:0.98rem; color:#0f172a;">{text}</div>'
 
 
+# -----------------------------
+# Core helper functions
+# -----------------------------
 @st.cache_data(show_spinner=False, ttl=3600)
 def embed_texts(texts: List[str]) -> List[List[float]]:
     resp = openai_client.embeddings.create(
@@ -350,7 +223,7 @@ def search_documents(question: str, top_k: int = 4) -> List[Dict]:
     matches = []
     for point in response.points:
         payload = point.payload or {}
-        text = payload.get("text", "")
+        text = payload.get("tex
         matches.append({
             "score": point.score,
             "document": payload.get("title", payload.get("document", "Unknown Document")),
@@ -437,7 +310,7 @@ def build_dynamic_suggestions(question: str) -> List[str]:
             "What recommendations are given for renewable energy adoption?",
             "Can you summarize this in simpler terms?",
         ]
-    if "cost" in q or "pricing" in q or "wind" in q:
+    if "cost" in q or "pricing" in q:
         return [
             "What cost drivers are discussed?",
             "Which report talks most directly about cost trends?",
@@ -451,6 +324,9 @@ def build_dynamic_suggestions(question: str) -> List[str]:
     ]
 
 
+# -----------------------------
+# Static starter questions
+# -----------------------------
 starter_questions = [
     "What are key challenges in grid reliability?",
     "What lessons are highlighted from renewable integration?",
@@ -459,20 +335,17 @@ starter_questions = [
     "Which report discusses reliability most directly?",
 ]
 
-# =========================
+# -----------------------------
 # Header
-# =========================
+# -----------------------------
 st.markdown(
     """
-    <div class="hero-wrap">
-        <div class="hero-title">⚡ AI Knowledge Agent</div>
-        <div class="hero-subtitle">
-            Ask questions across indexed public reports and get grounded answers, recommendations, citations, and highlighted source evidence.
-        </div>
-        <span class="hero-pill">Premium UI</span>
-        <span class="hero-pill">Qdrant Cloud</span>
-        <span class="hero-pill">OpenAI</span>
-        <span class="hero-pill">Streamlit Cloud</span>
+    <div class="hero">
+        <h1>⚡ AI Knowledge Agent</h1>
+        <p>Chat with indexed PDF knowledge using grounded answers, recommendations, citations, and highlighted evidence.</p>
+        <span class="pill">Streamlit Cloud</span>
+        <span class="pill">Qdrant Cloud</span>
+        <span class="pill">OpenAI</span>
     </div>
     """,
     unsafe_allow_html=True,
@@ -487,11 +360,10 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# =========================
+# -----------------------------
 # Sidebar
-# =========================
+# -----------------------------
 with st.sidebar:
-    st.subheader("Workspace")
     top_k = st.slider("Chunks to retrieve", 1, 10, 4)
     show_evidence = st.toggle("Show source evidence", value=True)
     show_citations = st.toggle("Show citations", value=True)
@@ -502,9 +374,9 @@ with st.sidebar:
         if st.button(sq, key=f"starter_{i}", use_container_width=True):
             st.session_state.selected_question = sq
 
-# =========================
+# -----------------------------
 # Chat input
-# =========================
+# -----------------------------
 question = st.chat_input("Ask the agent about your reports...")
 
 if st.session_state.selected_question and not question:
@@ -520,6 +392,7 @@ if question:
             for msg in st.session_state.messages[:-1]
         ]
 
+        # Better retrieval for follow-up questions
         recent_user_turns = [
             turn["content"] for turn in chat_history[-4:] if turn["role"] == "user"
         ]
@@ -545,9 +418,9 @@ if question:
         st.session_state.question_history.insert(0, question)
         st.session_state.messages.append({"role": "assistant", "content": answer})
 
-# =========================
+# -----------------------------
 # Chat rendering
-# =========================
+# -----------------------------
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         if msg["role"] == "assistant":
@@ -555,30 +428,17 @@ for msg in st.session_state.messages:
         else:
             st.write(msg["content"])
 
-# =========================
+# -----------------------------
 # Post-answer panels
-# =========================
+# -----------------------------
 data = st.session_state.last_response
 
 if data:
     st.divider()
 
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.markdown('<div class="metric-shell">', unsafe_allow_html=True)
-        st.metric("Retrieved Chunks", len(data["matches"]))
-        st.markdown('</div>', unsafe_allow_html=True)
-    with c2:
-        st.markdown('<div class="metric-shell">', unsafe_allow_html=True)
-        st.metric("Citations", len(data["citations"]))
-        st.markdown('</div>', unsafe_allow_html=True)
-    with c3:
-        st.markdown('<div class="metric-shell">', unsafe_allow_html=True)
-        st.metric("Question Length", len(data["question"].split()))
-        st.markdown('</div>', unsafe_allow_html=True)
-
+    # dynamic suggestions
     suggestions = build_dynamic_suggestions(data["question"])
-    st.markdown('<div class="section-label">Suggested follow-up questions</div>', unsafe_allow_html=True)
+    st.subheader("Suggested follow-up questions")
     cols = st.columns(3)
     for i, s in enumerate(suggestions):
         with cols[i]:
@@ -586,8 +446,9 @@ if data:
                 st.session_state.selected_question = s
                 st.rerun()
 
+    # citations
     if show_citations:
-        st.markdown('<div class="section-label">Citations</div>', unsafe_allow_html=True)
+        st.subheader("Citations")
         seen = set()
         for c in data["citations"]:
             key = (c["document"], c["section"], c["source_path"])
@@ -598,28 +459,6 @@ if data:
             st.markdown(
                 f"""
                 <div class="citation-card">
-                    <div class="source-title">{html.escape(c['document'])}</div>
-                    <div class="source-meta">Section: {html.escape(str(c['section']))}</div>
-                    <div class="source-path">{html.escape(c['source_path'])}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-    if show_evidence:
-        st.markdown('<div class="section-label">Evidence</div>', unsafe_allow_html=True)
-        for i, m in enumerate(data["matches"], start=1):
-            with st.expander(f"Match {i} · {m['document']} · {m['section']} · Score {m['score']:.4f}"):
-                st.caption(m["source_path"])
-                st.markdown(m["highlighted_text"], unsafe_allow_html=True)
-
-# =========================
-# Recent Questions
-# =========================
-if st.session_state.question_history:
-    st.divider()
-    st.subheader("Recent Questions")
-    chips = "".join(
-        [f'<span class="recent-chip">{html.escape(q)}</span>' for q in st.session_state.question_history[:6]]
-    )
-    st.markdown(chips, unsafe_allow_html=True)
+                    <div><strong>{html.escape(c['document'])}</strong></div>
+                    <div style="margin-top:0.25rem;">Section: {html.escape(str(c['section']))}</div>
+                    <div style="color:#94a3b8; font-size:0.75rem; margin-top:0.35rem;">{html.escap
