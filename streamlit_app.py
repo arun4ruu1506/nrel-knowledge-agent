@@ -201,6 +201,51 @@ st.markdown(
         font-weight: 800;
     }
 
+    .context-card {
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        border: 1px solid #dbeafe;
+        border-radius: 18px;
+        padding: 1rem;
+        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.06);
+        margin-bottom: 0.9rem;
+    }
+
+    .context-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.65rem;
+    }
+
+    .context-doc {
+        font-weight: 800;
+        color: #0f172a !important;
+        font-size: 1rem;
+    }
+
+    .context-badge {
+        display: inline-block;
+        padding: 0.18rem 0.55rem;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1d4ed8 !important;
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    .context-meta {
+        color: #475569 !important;
+        font-size: 0.88rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .context-score {
+        color: #0f766e !important;
+        font-size: 0.85rem;
+        font-weight: 800;
+    }
+
     .stChatMessage {
         background: white !important;
         border: 1px solid #e2e8f0;
@@ -490,7 +535,7 @@ st.markdown(
         <span class="hero-pill">Premium UI</span>
         <span class="hero-pill">Qdrant Cloud</span>
         <span class="hero-pill">OpenAI</span>
-        <span class="hero-pill">Feedback Enabled</span>
+        <span class="hero-pill">Source Context UI</span>
     </div>
     """,
     unsafe_allow_html=True,
@@ -630,11 +675,28 @@ if data:
             st.error(f"Could not save feedback: {str(e)}")
 
     if show_evidence:
-        st.markdown('<div class="section-label">Evidence</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-label">Source Context</div>', unsafe_allow_html=True)
+
         for i, m in enumerate(data["matches"], start=1):
-            with st.expander(f"Match {i} · {m['document']} · {m['section']} · Score {m['score']:.4f}"):
-                st.caption(m["source_path"])
-                st.markdown(m["highlighted_text"], unsafe_allow_html=True)
+            st.markdown(
+                f"""
+                <div class="context-card">
+                    <div class="context-top">
+                        <div>
+                            <div class="context-doc">📄 {html.escape(m['document'])}</div>
+                            <div class="context-meta"><b>Section:</b> {html.escape(m['section'])}</div>
+                            <div class="source-path">{html.escape(m['source_path'])}</div>
+                        </div>
+                        <div class="context-score">Score: {m['score']:.4f}</div>
+                    </div>
+                    <div class="context-badge">Match {i}</div>
+                    <div style="margin-top:0.75rem;">
+                        {m['highlighted_text']}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
 # =========================
 # Recent Questions
