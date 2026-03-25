@@ -31,7 +31,7 @@ qdrant_client = QdrantClient(
 # Page config
 # =========================
 st.set_page_config(
-    page_title="AI Knowledge Agent",
+    page_title="NREL Insight Agent",
     page_icon="⚡",
     layout="wide",
 )
@@ -56,13 +56,19 @@ if "feedback_comment" not in st.session_state:
 st.markdown(
     """
     <style>
+    header[data-testid="stHeader"] { display: none !important; }
+    [data-testid="stToolbar"] { display: none !important; }
+    #MainMenu { visibility: hidden !important; }
+    footer { visibility: hidden !important; }
+    .stDeployButton { display: none !important; }
+
     html, body, .stApp {
         background: #f8fafc !important;
         color: #0f172a !important;
     }
 
     .block-container {
-        padding-top: 1.2rem;
+        padding-top: 0.8rem !important;
         padding-bottom: 2rem;
         max-width: 1200px;
     }
@@ -219,7 +225,6 @@ st.markdown(
         border-radius: 0.28rem;
     }
 
-    /* Sidebar contrast fix */
     [data-testid="stSidebar"] {
         background: #f1f5f9 !important;
         border-right: 1px solid #e2e8f0;
@@ -478,9 +483,9 @@ starter_questions = [
 st.markdown(
     """
     <div class="hero-wrap">
-        <div class="hero-title">⚡ AI Knowledge Agent</div>
+        <div class="hero-title">⚡ NREL Insight Agent</div>
         <div class="hero-subtitle">
-            Ask questions across indexed public reports and get grounded answers, recommendations, citations, and highlighted source evidence.
+            Ask grounded questions across public renewable energy reports and get answers, recommendations, citations, and highlighted source evidence.
         </div>
         <span class="hero-pill">Premium UI</span>
         <span class="hero-pill">Qdrant Cloud</span>
