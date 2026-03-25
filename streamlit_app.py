@@ -1,10 +1,13 @@
 import html
 import re
+import uuid
+from datetime import datetime
 from typing import List, Dict
 
 import streamlit as st
 from openai import OpenAI
 from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams, PointStruct
 
 # =========================
 # Secrets / Clients
@@ -16,6 +19,7 @@ OPENAI_EMBED_MODEL = st.secrets.get("OPENAI_EMBED_MODEL", "text-embedding-3-smal
 QDRANT_URL = st.secrets["QDRANT_URL"]
 QDRANT_API_KEY = st.secrets["QDRANT_API_KEY"]
 QDRANT_COLLECTION = st.secrets.get("QDRANT_COLLECTION", "nrel_docs")
+FEEDBACK_COLLECTION = st.secrets.get("QDRANT_FEEDBACK_COLLECTION", "nrel_feedback")
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 qdrant_client = QdrantClient(
@@ -43,6 +47,8 @@ if "selected_question" not in st.session_state:
     st.session_state.selected_question = ""
 if "last_response" not in st.session_state:
     st.session_state.last_response = None
+if "feedback_comment" not in st.session_state:
+    st.session_state.feedback_comment = ""
 
 # =========================
 # Premium CSS
@@ -53,10 +59,6 @@ st.markdown(
     html, body, .stApp {
         background: #f8fafc !important;
         color: #0f172a !important;
-    }
-
-    * {
-        color: inherit;
     }
 
     .block-container {
@@ -100,7 +102,6 @@ st.markdown(
         color: white !important;
         font-size: 0.82rem;
         border: 1px solid rgba(255,255,255,0.12);
-        backdrop-filter: blur(6px);
     }
 
     .disclaimer {
@@ -121,14 +122,6 @@ st.markdown(
         letter-spacing: 0.08em;
         font-weight: 700;
         margin: 0.2rem 0 0.45rem 0;
-    }
-
-    .premium-card {
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 20px;
-        padding: 1rem 1rem;
-        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
     }
 
     .citation-card {
@@ -202,14 +195,6 @@ st.markdown(
         font-weight: 800;
     }
 
-    .metric-shell {
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 18px;
-        padding: 0.2rem 0.25rem;
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
-    }
-
     .stChatMessage {
         background: white !important;
         border: 1px solid #e2e8f0;
@@ -219,31 +204,12 @@ st.markdown(
         margin-bottom: 0.8rem;
     }
 
-    .stChatMessage [data-testid="stMarkdownContainer"] p {
-        color: #0f172a !important;
-    }
-
-    .stTextInput > div > div > input,
-    .stTextArea textarea {
-        background: white !important;
-        color: #0f172a !important;
-        border-radius: 14px !important;
-        border: 1px solid #cbd5e1 !important;
-    }
-
     .stButton > button {
         border-radius: 14px !important;
         border: 1px solid #cbd5e1 !important;
         background: white !important;
         color: #0f172a !important;
-        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
         font-weight: 600;
-    }
-
-    .stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #0f766e, #2563eb) !important;
-        color: white !important;
-        border: none !important;
     }
 
     mark {
@@ -253,16 +219,32 @@ st.markdown(
         border-radius: 0.28rem;
     }
 
+    /* Sidebar contrast fix */
     [data-testid="stSidebar"] {
-        background: #ffffff !important;
+        background: #f1f5f9 !important;
         border-right: 1px solid #e2e8f0;
     }
 
-    @media (prefers-color-scheme: dark) {
-        html, body, .stApp {
-            background: #f8fafc !important;
-            color: #0f172a !important;
-        }
+    section[data-testid="stSidebar"] * {
+        color: #0f172a !important;
+    }
+
+    .stSlider > div > div > div > div {
+        background: #cbd5e1 !important;
+    }
+
+    .stSlider > div > div > div > div > div {
+        background: #0f766e !important;
+    }
+
+    [data-baseweb="toggle"] {
+        background-color: #cbd5e1 !important;
+    }
+
+    section[data-testid="stSidebar"] button {
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #0f172a !important;
     }
     </style>
     """,
@@ -451,6 +433,37 @@ def build_dynamic_suggestions(question: str) -> List[str]:
     ]
 
 
+def ensure_feedback_collection():
+    existing = [c.name for c in qdrant_client.get_collections().collections]
+    if FEEDBACK_COLLECTION not in existing:
+        qdrant_client.create_collection(
+            collection_name=FEEDBACK_COLLECTION,
+            vectors_config=VectorParams(size=1, distance=Distance.COSINE),
+        )
+
+
+def save_feedback(rating: str, comment: str, response_data: Dict):
+    ensure_feedback_collection()
+
+    point = PointStruct(
+        id=str(uuid.uuid4()),
+        vector=[0.0],
+        payload={
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "rating": rating,
+            "comment": comment,
+            "question": response_data.get("question", ""),
+            "answer": response_data.get("answer", ""),
+            "citations": response_data.get("citations", []),
+        },
+    )
+
+    qdrant_client.upsert(
+        collection_name=FEEDBACK_COLLECTION,
+        points=[point],
+    )
+
+
 starter_questions = [
     "What are key challenges in grid reliability?",
     "What lessons are highlighted from renewable integration?",
@@ -472,7 +485,7 @@ st.markdown(
         <span class="hero-pill">Premium UI</span>
         <span class="hero-pill">Qdrant Cloud</span>
         <span class="hero-pill">OpenAI</span>
-        <span class="hero-pill">Streamlit Cloud</span>
+        <span class="hero-pill">Feedback Enabled</span>
     </div>
     """,
     unsafe_allow_html=True,
@@ -563,20 +576,6 @@ data = st.session_state.last_response
 if data:
     st.divider()
 
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.markdown('<div class="metric-shell">', unsafe_allow_html=True)
-        st.metric("Retrieved Chunks", len(data["matches"]))
-        st.markdown('</div>', unsafe_allow_html=True)
-    with c2:
-        st.markdown('<div class="metric-shell">', unsafe_allow_html=True)
-        st.metric("Citations", len(data["citations"]))
-        st.markdown('</div>', unsafe_allow_html=True)
-    with c3:
-        st.markdown('<div class="metric-shell">', unsafe_allow_html=True)
-        st.metric("Question Length", len(data["question"].split()))
-        st.markdown('</div>', unsafe_allow_html=True)
-
     suggestions = build_dynamic_suggestions(data["question"])
     st.markdown('<div class="section-label">Suggested follow-up questions</div>', unsafe_allow_html=True)
     cols = st.columns(3)
@@ -605,6 +604,25 @@ if data:
                 """,
                 unsafe_allow_html=True,
             )
+
+    st.markdown('<div class="section-label">Feedback</div>', unsafe_allow_html=True)
+    fb1, fb2 = st.columns(2)
+    helpful_clicked = fb1.button("👍 Helpful", use_container_width=True)
+    not_helpful_clicked = fb2.button("👎 Not Helpful", use_container_width=True)
+
+    comment = st.text_area(
+        "Optional comment",
+        placeholder="What worked well or what should improve?",
+        key="feedback_comment",
+    )
+
+    if helpful_clicked or not_helpful_clicked:
+        rating = "helpful" if helpful_clicked else "not_helpful"
+        try:
+            save_feedback(rating, comment, data)
+            st.success("Feedback saved")
+        except Exception as e:
+            st.error(f"Could not save feedback: {str(e)}")
 
     if show_evidence:
         st.markdown('<div class="section-label">Evidence</div>', unsafe_allow_html=True)
