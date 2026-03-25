@@ -47,46 +47,60 @@ if "selected_question" not in st.session_state:
     st.session_state.selected_question = ""
 if "last_response" not in st.session_state:
     st.session_state.last_response = None
-if "feedback_comment" not in st.session_state:
-    st.session_state.feedback_comment = ""
 
 # =========================
-# Premium CSS
+# SaaS UI CSS
 # =========================
 st.markdown(
     """
     <style>
-    header[data-testid="stHeader"] { display: none !important; }
-    [data-testid="stToolbar"] { display: none !important; }
     #MainMenu { visibility: hidden !important; }
     footer { visibility: hidden !important; }
-    .stDeployButton { display: none !important; }
 
     html, body, .stApp {
-        background: #f8fafc !important;
+        background: linear-gradient(180deg, #f8fafc 0%, #eef4ff 100%) !important;
         color: #0f172a !important;
     }
 
     .block-container {
-        padding-top: 0.8rem !important;
-        padding-bottom: 2rem;
-        max-width: 1200px;
+        max-width: 1280px;
+        padding-top: 1rem !important;
+        padding-bottom: 3rem !important;
+    }
+
+    header[data-testid="stHeader"] {
+        background: transparent !important;
+    }
+
+    [data-testid="stToolbar"] {
+        right: 1rem !important;
+    }
+
+    section[data-testid="stSidebar"] {
+        background: rgba(255,255,255,0.85) !important;
+        backdrop-filter: blur(10px) !important;
+        border-right: 1px solid #e2e8f0 !important;
+    }
+
+    [data-testid="collapsedControl"] {
+        display: block !important;
+        color: #0f172a !important;
     }
 
     .hero-wrap {
         background: linear-gradient(135deg, #0f172a 0%, #0f766e 45%, #2563eb 100%);
-        border-radius: 24px;
-        padding: 1.4rem 1.5rem 1.25rem 1.5rem;
+        border-radius: 28px;
+        padding: 1.5rem 1.6rem 1.35rem 1.6rem;
         color: white !important;
-        box-shadow: 0 12px 35px rgba(15, 23, 42, 0.16);
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
         margin-bottom: 1rem;
         border: 1px solid rgba(255,255,255,0.08);
     }
 
     .hero-title {
-        font-size: 2.1rem;
+        font-size: 2.2rem;
         font-weight: 800;
-        line-height: 1.1;
+        line-height: 1.08;
         margin: 0;
         color: white !important;
     }
@@ -94,17 +108,18 @@ st.markdown(
     .hero-subtitle {
         margin-top: 0.55rem;
         font-size: 1rem;
-        line-height: 1.5;
-        color: rgba(255,255,255,0.92) !important;
+        line-height: 1.6;
+        color: rgba(255,255,255,0.93) !important;
+        max-width: 900px;
     }
 
     .hero-pill {
         display: inline-block;
-        margin-top: 0.85rem;
-        margin-right: 0.4rem;
-        padding: 0.34rem 0.7rem;
+        margin-top: 0.9rem;
+        margin-right: 0.45rem;
+        padding: 0.36rem 0.78rem;
         border-radius: 999px;
-        background: rgba(255,255,255,0.13);
+        background: rgba(255,255,255,0.14);
         color: white !important;
         font-size: 0.82rem;
         border: 1px solid rgba(255,255,255,0.12);
@@ -116,32 +131,40 @@ st.markdown(
         color: #9a3412 !important;
         border-radius: 16px;
         padding: 0.95rem 1rem;
-        margin: 1rem 0 1rem 0;
+        margin: 0.9rem 0 1rem 0;
         box-shadow: 0 6px 18px rgba(154, 52, 18, 0.06);
         font-size: 0.94rem;
     }
 
     .section-label {
-        font-size: 0.75rem;
+        font-size: 0.74rem;
         color: #64748b !important;
         text-transform: uppercase;
-        letter-spacing: 0.08em;
-        font-weight: 700;
-        margin: 0.2rem 0 0.45rem 0;
+        letter-spacing: 0.09em;
+        font-weight: 800;
+        margin: 0.25rem 0 0.5rem 0;
+    }
+
+    .metric-card {
+        background: rgba(255,255,255,0.92);
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        padding: 0.3rem;
+        box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
     }
 
     .citation-card {
-        background: #ffffff;
+        background: rgba(255,255,255,0.95);
         border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        padding: 0.9rem 0.95rem;
-        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
-        margin-bottom: 0.7rem;
+        border-radius: 18px;
+        padding: 0.95rem 1rem;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+        margin-bottom: 0.8rem;
     }
 
     .source-title {
-        font-weight: 700;
-        font-size: 0.98rem;
+        font-weight: 800;
+        font-size: 1rem;
         color: #0f172a !important;
     }
 
@@ -158,55 +181,12 @@ st.markdown(
         word-break: break-word;
     }
 
-    .recent-chip {
-        display: inline-block;
-        padding: 0.38rem 0.72rem;
-        border-radius: 999px;
-        background: #e0f2fe;
-        color: #075985 !important;
-        margin: 0.18rem 0.24rem 0.18rem 0;
-        font-size: 0.83rem;
-        border: 1px solid #bae6fd;
-    }
-
-    .answer-heading {
-        background-color: #dcfce7;
-        color: #166534 !important;
-        padding: 0.18rem 0.48rem;
-        border-radius: 0.45rem;
-        font-weight: 800;
-    }
-
-    .explanation-heading {
-        background-color: #dbeafe;
-        color: #1d4ed8 !important;
-        padding: 0.18rem 0.48rem;
-        border-radius: 0.45rem;
-        font-weight: 800;
-    }
-
-    .recommendation-heading {
-        background-color: #fef3c7;
-        color: #92400e !important;
-        padding: 0.18rem 0.48rem;
-        border-radius: 0.45rem;
-        font-weight: 800;
-    }
-
-    .citation-heading {
-        background-color: #ede9fe;
-        color: #6d28d9 !important;
-        padding: 0.18rem 0.48rem;
-        border-radius: 0.45rem;
-        font-weight: 800;
-    }
-
     .context-card {
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
         border: 1px solid #dbeafe;
-        border-radius: 18px;
+        border-radius: 20px;
         padding: 1rem;
-        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.06);
+        box-shadow: 0 12px 28px rgba(37, 99, 235, 0.06);
         margin-bottom: 0.9rem;
     }
 
@@ -226,7 +206,7 @@ st.markdown(
 
     .context-badge {
         display: inline-block;
-        padding: 0.18rem 0.55rem;
+        padding: 0.2rem 0.58rem;
         border-radius: 999px;
         background: #dbeafe;
         color: #1d4ed8 !important;
@@ -242,17 +222,60 @@ st.markdown(
 
     .context-score {
         color: #0f766e !important;
-        font-size: 0.85rem;
+        font-size: 0.84rem;
+        font-weight: 800;
+    }
+
+    .recent-chip {
+        display: inline-block;
+        padding: 0.38rem 0.72rem;
+        border-radius: 999px;
+        background: #e0f2fe;
+        color: #075985 !important;
+        margin: 0.18rem 0.24rem 0.18rem 0;
+        font-size: 0.83rem;
+        border: 1px solid #bae6fd;
+    }
+
+    .answer-heading {
+        background-color: #dcfce7;
+        color: #166534 !important;
+        padding: 0.18rem 0.5rem;
+        border-radius: 0.45rem;
+        font-weight: 800;
+    }
+
+    .explanation-heading {
+        background-color: #dbeafe;
+        color: #1d4ed8 !important;
+        padding: 0.18rem 0.5rem;
+        border-radius: 0.45rem;
+        font-weight: 800;
+    }
+
+    .recommendation-heading {
+        background-color: #fef3c7;
+        color: #92400e !important;
+        padding: 0.18rem 0.5rem;
+        border-radius: 0.45rem;
+        font-weight: 800;
+    }
+
+    .citation-heading {
+        background-color: #ede9fe;
+        color: #6d28d9 !important;
+        padding: 0.18rem 0.5rem;
+        border-radius: 0.45rem;
         font-weight: 800;
     }
 
     .stChatMessage {
-        background: white !important;
+        background: rgba(255,255,255,0.96) !important;
         border: 1px solid #e2e8f0;
-        border-radius: 20px !important;
-        padding: 0.6rem 0.8rem !important;
-        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
-        margin-bottom: 0.8rem;
+        border-radius: 22px !important;
+        padding: 0.7rem 0.9rem !important;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+        margin-bottom: 0.9rem;
     }
 
     .stButton > button {
@@ -260,7 +283,12 @@ st.markdown(
         border: 1px solid #cbd5e1 !important;
         background: white !important;
         color: #0f172a !important;
-        font-weight: 600;
+        font-weight: 650;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
+    }
+
+    .stTextArea textarea {
+        border-radius: 16px !important;
     }
 
     mark {
@@ -268,15 +296,6 @@ st.markdown(
         color: #111827 !important;
         padding: 0.08rem 0.2rem;
         border-radius: 0.28rem;
-    }
-
-    [data-testid="stSidebar"] {
-        background: #f1f5f9 !important;
-        border-right: 1px solid #e2e8f0;
-    }
-
-    section[data-testid="stSidebar"] * {
-        color: #0f172a !important;
     }
 
     .stSlider > div > div > div > div {
@@ -289,12 +308,6 @@ st.markdown(
 
     [data-baseweb="toggle"] {
         background-color: #cbd5e1 !important;
-    }
-
-    section[data-testid="stSidebar"] button {
-        background: #ffffff !important;
-        border: 1px solid #cbd5e1 !important;
-        color: #0f172a !important;
     }
     </style>
     """,
@@ -311,11 +324,11 @@ def render_answer_with_highlights(answer: str) -> str:
     safe = re.sub(r"(?m)^Recommendations:", '<span class="recommendation-heading">Recommendations</span>', safe)
     safe = re.sub(r"(?m)^Citations:", '<span class="citation-heading">Citations</span>', safe)
     safe = safe.replace("\n", "<br>")
-    return f'<div style="line-height:1.9; font-size:1rem; color:#0f172a;">{safe}</div>'
+    return f'<div style="line-height:1.92; font-size:1rem; color:#0f172a;">{safe}</div>'
 
 
 def render_html_block(text: str) -> str:
-    return f'<div style="line-height:1.78; font-size:0.98rem; color:#0f172a;">{text}</div>'
+    return f'<div style="line-height:1.8; font-size:0.98rem; color:#0f172a;">{text}</div>'
 
 
 @st.cache_data(show_spinner=False, ttl=3600)
@@ -532,10 +545,10 @@ st.markdown(
         <div class="hero-subtitle">
             Ask grounded questions across public renewable energy reports and get answers, recommendations, citations, and highlighted source evidence.
         </div>
-        <span class="hero-pill">Premium UI</span>
+        <span class="hero-pill">SaaS-Level UI</span>
         <span class="hero-pill">Qdrant Cloud</span>
         <span class="hero-pill">OpenAI</span>
-        <span class="hero-pill">Source Context UI</span>
+        <span class="hero-pill">Source Context</span>
     </div>
     """,
     unsafe_allow_html=True,
@@ -625,6 +638,20 @@ data = st.session_state.last_response
 
 if data:
     st.divider()
+
+    mc1, mc2, mc3 = st.columns(3)
+    with mc1:
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        st.metric("Retrieved Chunks", len(data["matches"]))
+        st.markdown('</div>', unsafe_allow_html=True)
+    with mc2:
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        st.metric("Citations", len(data["citations"]))
+        st.markdown('</div>', unsafe_allow_html=True)
+    with mc3:
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        st.metric("Question Length", len(data["question"].split()))
+        st.markdown('</div>', unsafe_allow_html=True)
 
     suggestions = build_dynamic_suggestions(data["question"])
     st.markdown('<div class="section-label">Suggested follow-up questions</div>', unsafe_allow_html=True)
